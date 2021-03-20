@@ -18,7 +18,9 @@
       "@database": ["./database"],
       "@database/*": ["./database/*"],
       "@routes": ["./routes"],
-      "@routes/*": ["./routes/*"]
+      "@routes/*": ["./routes/*"],
+      "@helper": ["./helper"],
+      "@helper/*": ["./helper/*"]
     }
   },
 }

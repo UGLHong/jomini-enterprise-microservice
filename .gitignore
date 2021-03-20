@@ -13,6 +13,7 @@
 .env
 .env.*
 jomini-enterprise-firebase-adminsdk-credentials.json
+google-sheets-api-credentials.json
 
 # Node.js dependencies:
 node_modules/

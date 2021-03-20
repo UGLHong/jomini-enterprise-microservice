@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser'
 import logger from 'morgan'
 
 import { registerRoute } from '@routes'
-import { registerDatabase } from '@database'
+// import { registerDatabase } from '@database'
 import { registerFirebase } from '@modules/firebase'
 import compression from 'compression'
 
@@ -18,7 +18,7 @@ app.use(cookieParser() as any)
 app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
 
-registerDatabase()
+// registerDatabase()
 registerFirebase()
 registerRoute(app)
 

@@ -1,7 +1,7 @@
 import express from 'express'
 import cors from 'cors'
-import { admin } from '@modules/firebase'
-import userRouter from '@routes/user'
+// import { admin } from '@modules/firebase'
+import puppeteerRoute from '@routes/puppeteer'
 
 const rootRouter = express.Router()
 const allowedOrigins = process.env.CORS_ALLOWED_ORIGIN ? process.env.CORS_ALLOWED_ORIGIN.split(' ') : null
@@ -31,22 +31,9 @@ export function registerRoute (app) {
 
   // authenticate with firebase auth
   app.use(function checkAuth (req: any, res, next) {
-    if (req.headers.authorization) {
-      admin
-        .auth()
-        .verifyIdToken(req.headers.authorization)
-        .then((res) => {
-          req.auth = res
-          next()
-        })
-        .catch(() => {
-          if (process.env.NODE_ENV !== 'development') {
-            res.status(403).send('Unauthorized')
-          } else {
-            req.auth = {}
-            next()
-          }
-        })
+    if (req.headers.authorization && req.headers.authorization === process.env.HOME_SERVER_TOKEN) {
+      req.auth = {}
+      next()
     } else {
       if (process.env.NODE_ENV !== 'development') {
         res.status(403).send('Unauthorized')
@@ -58,5 +45,5 @@ export function registerRoute (app) {
   })
 
   app.use(rootRouter)
-  app.use(userRouter)
+  app.use(puppeteerRoute)
 }
