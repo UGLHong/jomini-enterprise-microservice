@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "es6",
+    "module": "commonjs",
+    "rootDir": "./",
+    "outDir": "./build",
+    "esModuleInterop": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "resolveJsonModule": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "paths": {
+      "@modules/*": ["./modules/*"],
+      "~/*": ["./*"],
+      "@database": ["./database"],
+      "@database/*": ["./database/*"],
+      "@routes": ["./routes"],
+      "@routes/*": ["./routes/*"]
+    }
+  },
+}

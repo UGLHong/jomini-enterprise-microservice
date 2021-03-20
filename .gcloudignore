@@ -1,0 +1,12 @@
+# Ignore everything
+# /[!.]*
+# /.?*
+
+# default git revision folder
+.git
+
+node_modules/
+.eslintrc.json
+nodemon.json
+package-lock.json
+booklah-120221-firebase-adminsdk-key.json

@@ -1,0 +1,6 @@
+{
+  "watch": ["*"],
+  "ext": "ts,json",
+  "ignore": ["./node_modules", "./build"],
+  "exec": "NODE_ENV=development ts-node -r tsconfig-paths/register -r dotenv/config --transpile-only ./entry.ts dotenv_config_path=.env.dev"
+}
