@@ -8,8 +8,21 @@ import { registerRoute } from '@routes'
 // import { registerDatabase } from '@database'
 import { registerFirebase } from '@modules/firebase'
 import compression from 'compression'
+import axios from 'axios'
+
+axios.interceptors.response.use((response) => {
+  return response.data
+}, err => { throw err })
 
 const app = express()
+
+// constantly send http request so router won't mark it as inactive and drop its connection
+// causing it unable to receive request externally
+setInterval(() => {
+  axios.post('https://google.com').catch(err => {
+    return err
+  })
+}, 30000)
 
 // these must come before routes
 app.use(compression())

@@ -10,6 +10,7 @@
     "seed": "NODE_ENV=development ts-node -r tsconfig-paths/register -r dotenv/config --transpile-only database/seed.ts dotenv_config_path=.env.dev"
   },
   "dependencies": {
+    "axios": "^0.21.1",
     "compression": "^1.7.4",
     "cookie-parser": "~1.4.4",
     "cors": "^2.8.5",
