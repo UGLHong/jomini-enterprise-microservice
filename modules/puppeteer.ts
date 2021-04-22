@@ -17,35 +17,35 @@ export enum ErrorString {
 const DIAMOND_IDENTIFIER = {
   86: {
     idx: 1,
-    text: 'Diamond×86'
+    text: 'Diamond×78+8'
   },
   172: {
     idx: 2,
-    text: 'Diamond×172'
+    text: 'Diamond×156+16'
   },
   257: {
     idx: 3,
-    text: 'Diamond×257'
+    text: 'Diamond×234+23'
   },
   706: {
     idx: 4,
-    text: 'Diamond×706'
+    text: 'Diamond×625+81'
   },
   2195: {
     idx: 5,
-    text: 'Diamond×2195'
+    text: 'Diamond×1860+335'
   },
   3688: {
     idx: 6,
-    text: 'Diamond×3688'
+    text: 'Diamond×3099+589'
   },
   5532: {
     idx: 7,
-    text: 'Diamond×5532'
+    text: 'Diamond×4649+883'
   },
   9288: {
     idx: 8,
-    text: 'Diamond×9288'
+    text: 'Diamond×7740+1548'
   },
   starlight: {
     idx: 9,
@@ -592,10 +592,10 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             await mlbbDiamondPage.waitForTimeout(100)
 
             console.log(`[${orderData.id}] Verifying Diamond / Package exist and selected correctly: ${orderData.amount}`)
-            const diamondBtn = await mlbbDiamondPage.$(`body > div.main-container > div.container > div > div.pc-content > div.pc-contain > div.pc-diamant > ul > li:nth-child(${DIAMOND_IDENTIFIER[orderData.amount].idx})`)
-            const textContent = await diamondBtn?.$x(`//*[contains(text(), '${DIAMOND_IDENTIFIER[orderData.amount].text}')]`)
-
-            if (diamondBtn && textContent && textContent.length > 0) {
+            const diamondBtn = await mlbbDiamondPage.$(`body > div.main-container > div.container > div > div.pc-content > div.pc-contain > div.pc-diamant > ul > li:nth-child(${DIAMOND_IDENTIFIER[orderData.amount].idx}) > .DiamantPrice`)
+            const textContent = await diamondBtn?.evaluate(el => el.innerText.replace(/[ \n]*/g, ''))
+            console.log('Clicked button val: ', textContent, DIAMOND_IDENTIFIER[orderData.amount].text)
+            if (diamondBtn && textContent && textContent.length > 0 && textContent === DIAMOND_IDENTIFIER[orderData.amount].text) {
               await mlbbDiamondPage.waitForTimeout(100)
               console.log(`[${orderData.id}] Verify Diamond / Package successful: ${orderData.amount}`)
 
@@ -605,10 +605,10 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
               await mlbbDiamondPage.waitForTimeout(100)
 
-              const selectedDiamondBtn = await mlbbDiamondPage.$('body > div.main-container > div.container > div > div.pc-content > div.pc-contain > div.pc-diamant > ul > li.active')
-              const selectedTextContext = await selectedDiamondBtn?.$x(`//*[contains(text(), '${DIAMOND_IDENTIFIER[orderData.amount].text}')]`)
+              const selectedDiamondBtn = await mlbbDiamondPage.$('body > div.main-container > div.container > div > div.pc-content > div.pc-contain > div.pc-diamant > ul > li.active > .DiamantPrice')
+              const selectedTextContext = await selectedDiamondBtn?.evaluate(el => el.innerText.replace(/[ \n]*/g, ''))
 
-              if (!(selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0)) {
+              if (!(selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0 && selectedTextContext === DIAMOND_IDENTIFIER[orderData.amount].text)) {
                 throw new Error('Selected wrong diamond amount on Smile.One !! STOP USING THE SYSTEM AND PROCESS MANUALLY UNTIL PROBLEM RESOLVED !! ')
               }
 
