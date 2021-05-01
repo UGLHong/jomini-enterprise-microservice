@@ -281,15 +281,19 @@ export async function getBankScreenshot (): Promise<{ status: string, message?: 
               waitUntil: 'networkidle0'
             }).catch(() => new Error('Timeout waiting for login to dashboard')),
             frame.waitForSelector('#mainNav > li.mNav2 > a', { visible: true }),
-            frame.waitForSelector('#cboxClose', { visible: true }),
             frame.click('#replacement-1')
           ])
 
           console.log('Logged into maybank business acc...')
 
-          await frame.waitForTimeout(300)
+          await frame.waitForTimeout(1000)
 
-          await frame.click('#cboxClose')
+          const popupShown = await frame.$('#cboxClose')
+
+          if (popupShown) {
+            console.log('Popup detected, closing...')
+            await frame.click('#cboxClose')
+          }
 
           await frame.waitForTimeout(1500)
 
