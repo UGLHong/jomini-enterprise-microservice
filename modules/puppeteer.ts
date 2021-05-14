@@ -616,7 +616,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
               await Promise.all([
                 mlbbDiamondPage.waitForNavigation({
-                  waitUntil: 'networkidle0'
+                  waitUntil: 'networkidle2'
                 }).catch(() => new Error('Timeout after clicked pay ! Check Smile.one order history !( timeout after 40 second )')),
                 // IMPORTANT: click on pay button
                 mlbbDiamondPage.click('#Nav-btnpc')
