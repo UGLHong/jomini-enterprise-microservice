@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "tsc --project ./ && npm run copy-files",
-    "start": "ts-node -r tsconfig-paths/register -r dotenv/config --transpile-only ./entry.ts dotenv_config_path=.env",
+    "start": "NODE_ENV=production ts-node -r tsconfig-paths/register -r dotenv/config --transpile-only ./entry.ts dotenv_config_path=.env",
     "serve": "nodemon",
     "copy-files": "cp -r ./public/ ./build/public && cp -r ./views/ ./build/views",
     "seed": "NODE_ENV=development ts-node -r tsconfig-paths/register -r dotenv/config --transpile-only database/seed.ts dotenv_config_path=.env.dev"

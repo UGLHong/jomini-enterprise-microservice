@@ -66,7 +66,7 @@ const browserHeight = 768
 
 const puppeteerConfig = {
   // use default chromium-browser, rather than Puppeteer's chrome which might not work on the PI's ARM architecture.
-  executablePath: 'chromium-browser',
+  ...(process.env.NODE_ENV !== 'development' && { executablePath: 'chromium-browser' }),
   headless: process.env.PUPPETEER_HEADLESS !== 'false',
   args: [`--window-size=${browserWidth},${browserHeight}`, '--no-sandbox', '--disable-features=site-per-process']
 }
@@ -563,35 +563,24 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
           try {
             await mlbbDiamondPage.goto('https://www.smile.one/merchant/mobilelegends', {
-              waitUntil: 'networkidle0'
+              waitUntil: 'networkidle2'
             })
 
             console.log(`[${orderData.id}] Opening page to process: ${orderData.id} - ${orderData.server} | ${orderData.amount}`)
 
-            await mlbbDiamondPage.waitForTimeout(100)
+            await mlbbDiamondPage.waitForTimeout(250)
 
             // This is to close any stupid popup modal
-            await mlbbDiamondPage.click('body')
-
-            await mlbbDiamondPage.waitForTimeout(250)
-
-            await mlbbDiamondPage.click('body')
-
-            await mlbbDiamondPage.waitForTimeout(250)
-
-            await mlbbDiamondPage.click('body')
-
-            await mlbbDiamondPage.waitForTimeout(250)
-
-            await mlbbDiamondPage.click('body')
+            await mlbbDiamondPage.mouse.click(0, 0)
+            await mlbbDiamondPage.mouse.click(0, 0)
 
             await mlbbDiamondPage.waitForTimeout(250)
 
             console.log(`[${orderData.id}] Entering ID...`)
-            await mlbbDiamondPage.type('#puseid', orderData.id.toString(), { delay: 30 })
+            await mlbbDiamondPage.type('#puseid', orderData.id.toString(), { delay: 15 })
 
             console.log(`[${orderData.id}] Entering Server...`)
-            await mlbbDiamondPage.type('#pserverid', orderData.server.toString(), { delay: 30 })
+            await mlbbDiamondPage.type('#pserverid', orderData.server.toString(), { delay: 15 })
 
             await mlbbDiamondPage.waitForTimeout(100)
 
