@@ -544,7 +544,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
             const alreadyExist = failedOrders.some(fail => fail.idx === orderData.idx)
             if (!alreadyExist) {
-              if (dialogMsg.includes('exist')) {
+              if (dialogMsg.includes('USER ID')) {
                 failedOrders.push({
                   ...orderData,
                   err: 'ID does not exist'
@@ -577,31 +577,43 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             await mlbbDiamondPage.waitForTimeout(250)
 
             console.log(`[${orderData.id}] Entering ID...`)
-            await mlbbDiamondPage.type('#puseid', orderData.id.toString(), { delay: 15 })
+            await mlbbDiamondPage.type('#user_id', orderData.id.toString(), { delay: 15 })
 
             console.log(`[${orderData.id}] Entering Server...`)
-            await mlbbDiamondPage.type('#pserverid', orderData.server.toString(), { delay: 15 })
+            await mlbbDiamondPage.type('#zone_id', orderData.server.toString(), { delay: 15 })
 
             await mlbbDiamondPage.waitForTimeout(100)
 
+            await mlbbDiamondPage.mouse.click(0, 0)
+
             console.log(`[${orderData.id}] Verifying Diamond / Package exist and selected correctly: ${orderData.amount}`)
-            const diamondBtn = await mlbbDiamondPage.$(`body > div.main-container > div.container > div > div.pc-content > div.pc-contain > div.pc-diamant > ul > li:nth-child(${DIAMOND_IDENTIFIER[orderData.amount].idx}) > .DiamantPrice`)
+            const diamondBtn = await mlbbDiamondPage.$(`body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box2 > div > ul > li:nth-child(${DIAMOND_IDENTIFIER[orderData.amount].idx})`)
             const textContent = await diamondBtn?.evaluate(el => el.innerText.replace(/[ \n]*/g, ''))
+
             console.log('Clicked button val: ', textContent, DIAMOND_IDENTIFIER[orderData.amount].text)
-            if (diamondBtn && textContent && textContent.length > 0 && textContent === DIAMOND_IDENTIFIER[orderData.amount].text) {
+            if (diamondBtn && textContent && textContent.length > 0 && textContent.includes(DIAMOND_IDENTIFIER[orderData.amount].text)) {
               await mlbbDiamondPage.waitForTimeout(100)
               console.log(`[${orderData.id}] Verify Diamond / Package successful: ${orderData.amount}`)
 
               console.log(`[${orderData.id}] Selected Diamond / Package: ${orderData.amount}`)
 
-              await diamondBtn.click()
+              await mlbbDiamondPage.waitForSelector('body > div.smileOneAlert-popUpShadowArea', {
+                hidden: true
+              })
 
               await mlbbDiamondPage.waitForTimeout(100)
 
-              const selectedDiamondBtn = await mlbbDiamondPage.$('body > div.main-container > div.container > div > div.pc-content > div.pc-contain > div.pc-diamant > ul > li.active > .DiamantPrice')
+              await diamondBtn.click()
+
+              await mlbbDiamondPage.waitForTimeout(200)
+
+              const selectedDiamondBtn = await mlbbDiamondPage.$('body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box2 > div > ul > li.active')
               const selectedTextContext = await selectedDiamondBtn?.evaluate(el => el.innerText.replace(/[ \n]*/g, ''))
 
-              if (!(selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0 && selectedTextContext === DIAMOND_IDENTIFIER[orderData.amount].text)) {
+              console.log('Selected btn: ', selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0)
+              console.log('Selected text: ', DIAMOND_IDENTIFIER[orderData.amount].text, selectedTextContext, selectedTextContext.includes(DIAMOND_IDENTIFIER[orderData.amount].text))
+
+              if (!(selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0 && selectedTextContext.includes(DIAMOND_IDENTIFIER[orderData.amount].text))) {
                 throw new Error('Selected wrong diamond amount on Smile.One !! STOP USING THE SYSTEM AND PROCESS MANUALLY UNTIL PROBLEM RESOLVED !! ')
               }
 
@@ -609,7 +621,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
               await mlbbDiamondPage.waitForTimeout(100)
 
-              await mlbbDiamondPage.click('body > div.main-container > div.container > div > div.pc-content > div.pc-contain > div.pc-nav > div > div.sectionNav-list > div.sectionNav-cartao.smilecoin > p')
+              await mlbbDiamondPage.click('body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box3 > div > div > div.sectionNav-list > div.sectionNav-cartao.smilecoin > span.cartao-logo.logo-fc')
               console.log(`[${orderData.id}] Selected Smile Coin payment method...`)
 
               await mlbbDiamondPage.waitForTimeout(100)
@@ -619,7 +631,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
                   waitUntil: 'networkidle2'
                 }).catch(() => new Error('Timeout after clicked pay ! Check Smile.one order history !( timeout after 40 second )')),
                 // IMPORTANT: click on pay button
-                mlbbDiamondPage.click('#Nav-btnpc')
+                mlbbDiamondPage.click('body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box3 > div > div > div.sectionNav-list > div.Nav-btn')
               ])
 
               await mlbbDiamondPage.waitForTimeout(200)
