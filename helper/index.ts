@@ -10,3 +10,7 @@ export function asyncRoute (func) {
     }
   }
 }
+
+export function getRandomNum (min, max, decimal = 3) {
+  return parseFloat((Math.random() * (max - min) + min).toFixed(decimal))
+}

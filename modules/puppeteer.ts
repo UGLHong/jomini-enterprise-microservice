@@ -1,6 +1,7 @@
 import { Browser, Page } from 'puppeteer'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
+import { getRandomNum } from '@helper'
 const { performance } = require('perf_hooks')
 
 // puppeteer.use(require('puppeteer-extra-plugin-anonymize-ua')())
@@ -610,8 +611,8 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
               const selectedDiamondBtn = await mlbbDiamondPage.$('body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box2 > div > ul > li.active')
               const selectedTextContext = await selectedDiamondBtn?.evaluate(el => el.innerText.replace(/[ \n]*/g, ''))
 
-              console.log('Selected btn: ', selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0)
-              console.log('Selected text: ', DIAMOND_IDENTIFIER[orderData.amount].text, selectedTextContext, selectedTextContext.includes(DIAMOND_IDENTIFIER[orderData.amount].text))
+              console.log(`[${orderData.id}] Selected btn: `, selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0)
+              console.log(`[${orderData.id}] Selected text: `, DIAMOND_IDENTIFIER[orderData.amount].text, selectedTextContext, selectedTextContext.includes(DIAMOND_IDENTIFIER[orderData.amount].text))
 
               if (!(selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0 && selectedTextContext.includes(DIAMOND_IDENTIFIER[orderData.amount].text))) {
                 throw new Error('Selected wrong diamond amount on Smile.One !! STOP USING THE SYSTEM AND PROCESS MANUALLY UNTIL PROBLEM RESOLVED !! ')
@@ -619,12 +620,15 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
               console.log(`[${orderData.id}] Diamond / Package selected correctly: ${orderData.amount}`)
 
-              await mlbbDiamondPage.waitForTimeout(100)
+              const firstRandomPause = getRandomNum(0, 3) * 1000
+              console.log(`[${orderData.id}] First random timeout: `, firstRandomPause)
+              await mlbbDiamondPage.waitForTimeout(firstRandomPause)
 
               await mlbbDiamondPage.click('body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box3 > div > div > div.sectionNav-list > div.sectionNav-cartao.smilecoin > span.cartao-logo.logo-fc')
-              console.log(`[${orderData.id}] Selected Smile Coin payment method...`)
 
-              await mlbbDiamondPage.waitForTimeout(100)
+              const secondRandomPause = getRandomNum(0, 3) * 1000
+              console.log(`[${orderData.id}] Second random timeout: `, secondRandomPause)
+              await mlbbDiamondPage.waitForTimeout(secondRandomPause)
 
               await Promise.all([
                 mlbbDiamondPage.waitForNavigation({
