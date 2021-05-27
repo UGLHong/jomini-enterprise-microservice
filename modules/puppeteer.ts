@@ -1,7 +1,6 @@
 import { Browser, Page } from 'puppeteer'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
-import { getRandomNum } from '@helper'
 const { performance } = require('perf_hooks')
 
 // puppeteer.use(require('puppeteer-extra-plugin-anonymize-ua')())
@@ -536,12 +535,13 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
         console.log('Opening diamond page...')
 
-        mappedOrders.forEach(async orderData => {
+        mappedOrders.forEach(async (orderData, index) => {
+          const waitTime = index * 5 * 1000
           const mlbbDiamondPage = await browser.newPage()
 
           mlbbDiamondPage.once('dialog', async dialog => {
             const dialogMsg = dialog.message()
-            console.log(`[${orderData.id}] (ERR) Dialog shown with message: ${dialogMsg}`)
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] (ERR) Dialog shown with message: ${dialogMsg}`)
 
             const alreadyExist = failedOrders.some(fail => fail.idx === orderData.idx)
             if (!alreadyExist) {
@@ -563,46 +563,47 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
           })
 
           try {
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Opening page to process: ${orderData.id} - ${orderData.server} | ${orderData.amount}`)
             await mlbbDiamondPage.goto('https://www.smile.one/merchant/mobilelegends', {
               waitUntil: 'networkidle2'
             })
 
-            console.log(`[${orderData.id}] Opening page to process: ${orderData.id} - ${orderData.server} | ${orderData.amount}`)
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Page loaded, wait for ${waitTime / 1000} seconds...`)
+            await mlbbDiamondPage.waitForTimeout(waitTime)
 
-            await mlbbDiamondPage.waitForTimeout(250)
+            await mlbbDiamondPage.waitForTimeout(200)
 
             // This is to close any stupid popup modal
             await mlbbDiamondPage.mouse.click(0, 0)
             await mlbbDiamondPage.mouse.click(0, 0)
 
-            await mlbbDiamondPage.waitForTimeout(250)
+            await mlbbDiamondPage.waitForTimeout(200)
 
-            console.log(`[${orderData.id}] Entering ID...`)
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering ID...`)
             await mlbbDiamondPage.type('#user_id', orderData.id.toString(), { delay: 15 })
 
-            console.log(`[${orderData.id}] Entering Server...`)
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering Server...`)
             await mlbbDiamondPage.type('#zone_id', orderData.server.toString(), { delay: 15 })
 
             await mlbbDiamondPage.waitForTimeout(100)
 
             await mlbbDiamondPage.mouse.click(0, 0)
 
-            console.log(`[${orderData.id}] Verifying Diamond / Package exist and selected correctly: ${orderData.amount}`)
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Verify amount exist: ${orderData.amount}`)
             const diamondBtn = await mlbbDiamondPage.$(`body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box2 > div > ul > li:nth-child(${DIAMOND_IDENTIFIER[orderData.amount].idx})`)
             const textContent = await diamondBtn?.evaluate(el => el.innerText.replace(/[ \n]*/g, ''))
 
-            console.log('Clicked button val: ', textContent, DIAMOND_IDENTIFIER[orderData.amount].text)
             if (diamondBtn && textContent && textContent.length > 0 && textContent.includes(DIAMOND_IDENTIFIER[orderData.amount].text)) {
               await mlbbDiamondPage.waitForTimeout(100)
-              console.log(`[${orderData.id}] Verify Diamond / Package successful: ${orderData.amount}`)
-
-              console.log(`[${orderData.id}] Selected Diamond / Package: ${orderData.amount}`)
+              console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Amount exist: ${textContent}`)
 
               await mlbbDiamondPage.waitForSelector('body > div.smileOneAlert-popUpShadowArea', {
                 hidden: true
               })
 
               await mlbbDiamondPage.waitForTimeout(100)
+
+              console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Select amount: ${orderData.amount}`)
 
               await diamondBtn.click()
 
@@ -611,24 +612,23 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
               const selectedDiamondBtn = await mlbbDiamondPage.$('body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box2 > div > ul > li.active')
               const selectedTextContext = await selectedDiamondBtn?.evaluate(el => el.innerText.replace(/[ \n]*/g, ''))
 
-              console.log(`[${orderData.id}] Selected btn: `, selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0)
-              console.log(`[${orderData.id}] Selected text: `, DIAMOND_IDENTIFIER[orderData.amount].text, selectedTextContext, selectedTextContext.includes(DIAMOND_IDENTIFIER[orderData.amount].text))
+              console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Verify amount selection: `, DIAMOND_IDENTIFIER[orderData.amount].text, selectedTextContext, selectedTextContext.includes(DIAMOND_IDENTIFIER[orderData.amount].text))
 
               if (!(selectedDiamondBtn && selectedTextContext && selectedTextContext.length > 0 && selectedTextContext.includes(DIAMOND_IDENTIFIER[orderData.amount].text))) {
                 throw new Error('Selected wrong diamond amount on Smile.One !! STOP USING THE SYSTEM AND PROCESS MANUALLY UNTIL PROBLEM RESOLVED !! ')
               }
 
-              console.log(`[${orderData.id}] Diamond / Package selected correctly: ${orderData.amount}`)
+              console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Amount selection verified: ${orderData.amount}`)
 
-              const firstRandomPause = getRandomNum(0, 3) * 1000
-              console.log(`[${orderData.id}] First random timeout: `, firstRandomPause)
-              await mlbbDiamondPage.waitForTimeout(firstRandomPause)
+              await mlbbDiamondPage.waitForTimeout(100)
 
               await mlbbDiamondPage.click('body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box3 > div > div > div.sectionNav-list > div.sectionNav-cartao.smilecoin > span.cartao-logo.logo-fc')
 
-              const secondRandomPause = getRandomNum(0, 3) * 1000
-              console.log(`[${orderData.id}] Second random timeout: `, secondRandomPause)
-              await mlbbDiamondPage.waitForTimeout(secondRandomPause)
+              console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Select payment method...`)
+
+              await mlbbDiamondPage.waitForTimeout(100)
+
+              console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Click pay...`)
 
               await Promise.all([
                 mlbbDiamondPage.waitForNavigation({
@@ -644,7 +644,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
               if (mlbbDiamondPage.url().includes('https://www.smile.one/message/success')) {
                 successfulOrders.push(orderData)
-                console.log(`[${orderData.id}] Order completed successfully ^_^ !`)
+                console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Order completed successfully ^_^ !`)
               } else if (mlbbDiamondPage.url().includes('https://www.smile.one/customer/recharge')) {
                 throw new Error('Not enough smile coins to buy diamond !')
               } else {
@@ -653,11 +653,11 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
               mlbbDiamondPage.close()
             } else {
-              console.log(`[${orderData.id}] (ERR) Fail to verify Diamond / Package for : ${orderData.id} - ${orderData.server} | ${orderData.amount}... skipping`)
+              console.log(`[${orderData.id} | ${index} | ${orderData.amount}] (ERR) Fail to verify Diamond / Package for : ${orderData.id} - ${orderData.server} | ${orderData.amount}... skipping`)
               throw new Error('Fail to confirm that the clicked diamond amount is correct, maybe MLBB updated their diamond amount / price')
             }
           } catch (e) {
-            console.log(`[${orderData.id}] (ERR) Process error with message: ${e}`)
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] (ERR) Process error with message: ${e}`)
 
             const alreadyExist = failedOrders.some(fail => fail.idx === orderData.idx)
             if (!alreadyExist) {
@@ -692,20 +692,20 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             mappedOrders.forEach(all => {
               console.log(`ID: ${all.id} (${all.server})`)
               console.log(`DM: ${all.amount}`)
-              console.log('________________________________')
+              console.log(' ')
             })
             console.log('----------------- Successful order ----------------------- ')
             successfulOrders.forEach(successful => {
               console.log(`ID: ${successful.id} (${successful.server})`)
               console.log(`DM: ${successful.amount}`)
-              console.log('________________________________')
+              console.log(' ')
             })
             console.log('----------------- Failed order --------------------------- ')
             failedOrders.forEach(failed => {
               console.log(`ID: ${failed.id} (${failed.server})`)
               console.log(`DM: ${failed.amount}`)
               console.log(`REASON: ${failed.err}`)
-              console.log('________________________________')
+              console.log(' ')
             })
             console.log('----------------- End of order --------------------------- ')
 
