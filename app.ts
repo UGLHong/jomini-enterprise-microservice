@@ -9,6 +9,7 @@ import { registerRoute } from '@routes'
 import { registerFirebase } from '@modules/firebase'
 import compression from 'compression'
 import axios from 'axios'
+import { initSharedBrowser } from '@modules/puppeteer'
 
 axios.interceptors.response.use((response) => {
   return response.data
@@ -34,6 +35,9 @@ app.use(express.urlencoded({ extended: false }))
 // registerDatabase()
 registerFirebase()
 registerRoute(app)
+
+// init puppeteer shared browser
+initSharedBrowser()
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'))

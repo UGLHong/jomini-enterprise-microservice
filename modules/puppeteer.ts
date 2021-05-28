@@ -1,4 +1,4 @@
-import { Browser, Page } from 'puppeteer'
+import { Browser, Page, PageEmittedEvents } from 'puppeteer'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 const { performance } = require('perf_hooks')
@@ -71,6 +71,16 @@ const puppeteerConfig = {
   args: [`--window-size=${browserWidth},${browserHeight}`, '--no-sandbox', '--disable-features=site-per-process']
 }
 
+let sharedBrowser: Browser
+
+export async function initSharedBrowser () {
+  try {
+    sharedBrowser = await puppeteer.launch(puppeteerConfig)
+  } catch (err) {
+    console.log('Shared browser initialization failed ... !!')
+  }
+}
+
 async function screenshotDOMElement (page, opts: {path?: string, selector: string, padding?: number }) {
   // const padding = opts.padding !== undefined ? opts.padding : 0
   const path = 'path' in opts ? opts.path : null
@@ -98,11 +108,14 @@ async function screenshotDOMElement (page, opts: {path?: string, selector: strin
 export async function getBankScreenshot (): Promise<{ status: string, message?: string, data: { fileBuffers?: Array<any> }}> {
   return new Promise((resolve, reject) => {
     let browser: Browser
+    const allBrowserPage: Array<Page> = []
+
     async function start () {
       const startTime = performance.now()
 
       try {
-        browser = await puppeteer.launch(puppeteerConfig)
+        browser = await getBrowser(sharedBrowser)
+        sharedBrowser = browser
       } catch (err) {
         resolve({
           status: 'fail',
@@ -114,6 +127,8 @@ export async function getBankScreenshot (): Promise<{ status: string, message?: 
       async function maybankPersonalSS () {
         try {
           const maybankPage = await browser.newPage()
+          allBrowserPage.push(maybankPage)
+
           await maybankPage.setViewport({
             width: browserWidth,
             height: browserHeight
@@ -205,6 +220,8 @@ export async function getBankScreenshot (): Promise<{ status: string, message?: 
         console.log('Start to get maybank business acc screenshot...')
         try {
           const maybankPage = await browser.newPage()
+          allBrowserPage.push(maybankPage)
+
           await maybankPage.setViewport({
             width: browserWidth,
             height: browserHeight
@@ -359,7 +376,8 @@ export async function getBankScreenshot (): Promise<{ status: string, message?: 
         // maybankPersonalSS()
       ])
 
-      await browser.close()
+      // await browser.close()
+      allBrowserPage.forEach(pageInstance => pageInstance.isClosed() ? '' : pageInstance.close())
 
       const mappedResult = result.reduce((acc, res) => {
         if (res.status === 'success') {
@@ -414,15 +432,19 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
     const failedOrders: any = []
 
     const mappedOrders = allOrder.map((data, idx) => ({ ...data, idx }))
+    const allBrowserPage: Array<Page> = []
 
     let browser: Browser
 
     async function processOrder () {
       try {
-        browser = await puppeteer.launch(puppeteerConfig)
+        browser = await getBrowser(sharedBrowser)
+        sharedBrowser = browser
+
         console.log('Order to process: ', mappedOrders)
 
         const googleAuthPage = await browser.newPage()
+        allBrowserPage.push(googleAuthPage)
 
         await googleAuthPage.setViewport({
           width: browserWidth,
@@ -439,55 +461,64 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
         await googleAuthPage.waitForTimeout(200)
 
-        console.log('Entering google id...')
-
-        await googleAuthPage.type('#identifierId', process.env.SMILEONE_GOOGLE_ID as any, { delay: 60 })
-
-        await Promise.all([
-          googleAuthPage.waitForNavigation({
-            waitUntil: 'networkidle0'
-          }).catch(() => new Error('Timeout after entering google auth email')),
-          googleAuthPage.click('#identifierNext'),
-          googleAuthPage.waitForSelector('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', { visible: true })
-        ])
-
-        googleAuthPage.waitForTimeout(200)
-
-        console.log('Entering google password...')
-
-        await googleAuthPage.type('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', process.env.SMILEONE_GOOGLE_PW as any, { delay: 60 })
-
-        console.log('Waiting for google auth popup page to close')
-
-        await Promise.all([
-          googleAuthPage.waitForNavigation({
-            waitUntil: 'networkidle2'
-          }).catch(() => new Error('Timeout after entering google auth password')),
-          googleAuthPage.click('#passwordNext')
-        ])
-
-        await googleAuthPage.waitForTimeout(100)
-
         if (googleAuthPage.url().includes('https://www.smile.one/customer/google/loginv')) {
           // login success
-          console.log('Google login success')
+          console.log('Already logged in previously...')
         } else {
-          // 'https://accounts.google.com/signin/v2/challenge' <--- when additional verification needed
-          console.log('Waiting for verification to be successful and be redirected')
+          console.log('Entering google id...')
 
-          await googleAuthPage.waitForNavigation({
-            waitUntil: 'networkidle0'
-          }).catch(() => new Error('Google login additional security verification failed ( timeout after 40 second )'))
+          await googleAuthPage.type('#identifierId', process.env.SMILEONE_GOOGLE_ID as any, { delay: 60 })
+
+          await Promise.all([
+            googleAuthPage.waitForNavigation({
+              waitUntil: 'networkidle0'
+            }).catch(() => new Error('Timeout after entering google auth email')),
+            googleAuthPage.click('#identifierNext'),
+            googleAuthPage.waitForSelector('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', { visible: true })
+          ])
+
+          googleAuthPage.waitForTimeout(200)
+
+          console.log('Entering google password...')
+
+          await googleAuthPage.type('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', process.env.SMILEONE_GOOGLE_PW as any, { delay: 60 })
+
+          console.log('Waiting for google auth popup page to close')
+
+          await Promise.all([
+            googleAuthPage.waitForNavigation({
+              waitUntil: 'networkidle2'
+            }).catch(() => new Error('Timeout after entering google auth password')),
+            googleAuthPage.click('#passwordNext')
+          ])
+
+          await googleAuthPage.waitForTimeout(100)
+
+          if (googleAuthPage.url().includes('https://www.smile.one/customer/google/loginv')) {
+          // login success
+            console.log('Google login success')
+          } else {
+          // 'https://accounts.google.com/signin/v2/challenge' <--- when additional verification needed
+            console.log('Waiting for verification to be successful and be redirected')
+
+            await googleAuthPage.waitForNavigation({
+              waitUntil: 'networkidle0'
+            }).catch(() => new Error('Google login additional security verification failed ( timeout after 40 second )'))
+          }
+
+          console.log('Google verification and login success')
         }
 
-        console.log('Google verification and login success')
+        // const pageCookies = await googleAuthPage._client.send('Network.getAllCookies')
+        // const cookiePHPSESSID = pageCookies.cookies.find(cookie => cookie.domain === 'www.smile.one' && cookie.name === 'PHPSESSID')
+        // console.log(pageCookies, cookiePHPSESSID)
 
         await googleAuthPage.close()
 
         console.log('Opening diamond page...')
 
         mappedOrders.forEach(async (orderData, index) => {
-          const waitTime = index * 10 * 1000
+          const waitTime = index * 5 * 1000
 
           await new Promise((resolve) => {
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] wait for ${waitTime / 1000} seconds...`)
@@ -495,6 +526,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
           })
 
           const mlbbDiamondPage = await browser.newPage()
+          allBrowserPage.push(mlbbDiamondPage)
 
           // last time they use this popup
           mlbbDiamondPage.once('dialog', async dialog => {
@@ -667,7 +699,9 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
         let timeout: any = () => {}
 
         function closeBrowser (message = '') {
-          browser.close()
+          // browser.close()
+          allBrowserPage.forEach(pageInstance => pageInstance.isClosed() ? '' : pageInstance.close())
+
           clearInterval(interval)
           clearTimeout(timeout)
           console.log('Time taken for the whole process: ', ((performance.now() - startTime) / 1000).toFixed(3), ' sec')
@@ -705,6 +739,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             closeBrowser(failedOrders.length > 0 ? failedOrders[0].err : '')
           }
         }, 1000)
+
         timeout = setTimeout(() => {
           closeBrowser('Puppeteer timeout after 3 minutes')
         }, 180000)
@@ -713,7 +748,8 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
         console.log('Unexpected puppeteer error. Message: ', e)
 
-        browser.close()
+        // browser.close()
+        allBrowserPage.forEach(pageInstance => pageInstance.isClosed() ? '' : pageInstance.close())
 
         resolve({
           orders: mappedOrders,
@@ -726,4 +762,19 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
     processOrder()
   })
+}
+
+async function getBrowser (sharedBrowser: Browser | undefined = undefined) {
+  if (sharedBrowser && sharedBrowser.isConnected()) {
+    console.log('Reuse existing shared browser !!!')
+    return sharedBrowser
+  } else {
+    if (sharedBrowser && sharedBrowser.close) {
+      await sharedBrowser.close()
+      console.log('Close previous shared browser !!!')
+    }
+
+    console.log('Created a new shared browser !!!')
+    return puppeteer.launch(puppeteerConfig)
+  }
 }
