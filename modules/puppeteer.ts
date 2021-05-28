@@ -422,56 +422,6 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
         browser = await puppeteer.launch(puppeteerConfig)
         console.log('Order to process: ', mappedOrders)
 
-        const smileLoginPage = await browser.newPage()
-        await smileLoginPage.setViewport({
-          width: browserWidth,
-          height: browserHeight
-        })
-
-        console.log('Opening login page...')
-
-        let retryCount = 0
-        let successfullyLoaded = false
-
-        while (!successfullyLoaded) {
-          try {
-            await smileLoginPage.goto('https://www.smile.one/customer/account/login', {
-              waitUntil: 'networkidle0',
-              timeout: 15000
-            })
-            successfullyLoaded = true
-          } catch (err) {
-            console.log(err)
-            await smileLoginPage.waitForTimeout(1500)
-            if (retryCount < 5) {
-              console.log(`Retrying ${retryCount + 1} time...`)
-              retryCount++
-            } else {
-              throw err
-            }
-          }
-        }
-
-        await smileLoginPage.waitForSelector('#login-form > div > div > div.cont-login > div.formas.google.login_method_m.google_login', { visible: true })
-
-        console.log('Click login with google ...')
-
-        const [googleAuthPopupPage] = await Promise.all([
-          new Promise((resolve, reject) => {
-            const timeOut = setTimeout(() => {
-              reject(new Error('Timeout waiting for google auth page to popup'))
-            }, 10000)
-
-            smileLoginPage.once('popup', page => {
-              clearTimeout(timeOut)
-              resolve(page)
-            })
-          }),
-          smileLoginPage.click('#login-form > div > div > div.cont-login > div.formas.google.login_method_m.google_login')
-        ]) as Array<Page>
-
-        await smileLoginPage.close()
-
         const googleAuthPage = await browser.newPage()
 
         await googleAuthPage.setViewport({
@@ -479,11 +429,9 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
           height: browserHeight
         })
 
-        console.log('Google auth URL: ', googleAuthPopupPage.url())
+        const googleAuthURL = 'https://accounts.google.com/o/oauth2/auth/identifier?response_type=code&redirect_uri=https%3A%2F%2Fwww.smile.one%2Fcustomer%2Fgoogle%2Floginv&client_id=198333726333-tpjiv3fnii5pg0tmmnogp0g8ct7fhl3b.apps.googleusercontent.com&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&access_type=offline&approval_prompt=auto&flowName=GeneralOAuthFlow'
 
-        const googleAuthURL = googleAuthPopupPage.url()
-
-        googleAuthPopupPage.close()
+        console.log('Google auth URL: ', googleAuthURL)
 
         await googleAuthPage.goto(googleAuthURL, {
           waitUntil: 'networkidle0'
@@ -513,7 +461,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
         await Promise.all([
           googleAuthPage.waitForNavigation({
-            waitUntil: 'networkidle0'
+            waitUntil: 'networkidle2'
           }).catch(() => new Error('Timeout after entering google auth password')),
           googleAuthPage.click('#passwordNext')
         ])
@@ -569,7 +517,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             }
 
             await dialog.dismiss()
-            mlbbDiamondPage.close()
+            mlbbDiamondPage.close().catch(() => {})
           })
 
           // now they use custom popup
@@ -595,7 +543,10 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
                 }
               }
 
-              mlbbDiamondPage.close()
+              mlbbDiamondPage.close().catch(() => {})
+            }).catch(() => {
+              console.log('Custom modal listener terminated')
+              return null
             })
 
           try {
@@ -692,7 +643,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
                 throw new Error(`Redirected to random URL, check Smile.One order history ! URL: ${mlbbDiamondPage.url()}`)
               }
 
-              mlbbDiamondPage.close()
+              mlbbDiamondPage.close().catch(() => {})
             } else {
               console.log(`[${orderData.id} | ${index} | ${orderData.amount}] (ERR) Fail to verify Diamond / Package for : ${orderData.id} - ${orderData.server} | ${orderData.amount}... skipping`)
               throw new Error('Fail to confirm that the clicked diamond amount is correct, maybe MLBB updated their diamond amount / price')
@@ -707,7 +658,8 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
                 err: e.message
               })
             }
-            mlbbDiamondPage.close()
+
+            mlbbDiamondPage.close().catch(() => {})
           }
         })
 
