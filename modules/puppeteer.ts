@@ -536,7 +536,8 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
         console.log('Opening diamond page...')
 
         mappedOrders.forEach(async (orderData, index) => {
-          const waitTime = index * 5 * 1000
+          const waitTime = index * 9 * 1000
+
           const mlbbDiamondPage = await browser.newPage()
 
           mlbbDiamondPage.once('dialog', async dialog => {
@@ -563,13 +564,13 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
           })
 
           try {
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] wait for ${waitTime / 1000} seconds...`)
+            await mlbbDiamondPage.waitForTimeout(waitTime)
+
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Opening page to process: ${orderData.id} - ${orderData.server} | ${orderData.amount}`)
             await mlbbDiamondPage.goto('https://www.smile.one/merchant/mobilelegends', {
               waitUntil: 'networkidle2'
             })
-
-            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Page loaded, wait for ${waitTime / 1000} seconds...`)
-            await mlbbDiamondPage.waitForTimeout(waitTime)
 
             await mlbbDiamondPage.waitForTimeout(200)
 
