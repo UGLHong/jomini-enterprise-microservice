@@ -481,13 +481,15 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
         console.log('Google auth URL: ', googleAuthPopupPage.url())
 
-        await googleAuthPage.goto(googleAuthPopupPage.url(), {
-          waitUntil: 'networkidle0'
-        })
+        const googleAuthURL = googleAuthPopupPage.url()
 
         googleAuthPopupPage.close()
 
-        await googleAuthPage.waitForTimeout(500)
+        await googleAuthPage.goto(googleAuthURL, {
+          waitUntil: 'networkidle0'
+        })
+
+        await googleAuthPage.waitForTimeout(200)
 
         console.log('Entering google id...')
 
@@ -498,9 +500,10 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             waitUntil: 'networkidle0'
           }).catch(() => new Error('Timeout after entering google auth email')),
           googleAuthPage.click('#identifierNext'),
-          googleAuthPage.waitForSelector('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', { visible: true }),
-          googleAuthPage.waitForTimeout(200)
+          googleAuthPage.waitForSelector('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', { visible: true })
         ])
+
+        googleAuthPage.waitForTimeout(200)
 
         console.log('Entering google password...')
 
@@ -515,7 +518,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
           googleAuthPage.click('#passwordNext')
         ])
 
-        await googleAuthPage.waitForTimeout(300)
+        await googleAuthPage.waitForTimeout(100)
 
         if (googleAuthPage.url().includes('https://www.smile.one/customer/google/loginv')) {
           // login success
@@ -536,17 +539,23 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
         console.log('Opening diamond page...')
 
         mappedOrders.forEach(async (orderData, index) => {
-          const waitTime = index * 9 * 1000
+          const waitTime = index * 10 * 1000
+
+          await new Promise((resolve) => {
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] wait for ${waitTime / 1000} seconds...`)
+            setTimeout(resolve, waitTime)
+          })
 
           const mlbbDiamondPage = await browser.newPage()
 
+          // last time they use this popup
           mlbbDiamondPage.once('dialog', async dialog => {
             const dialogMsg = dialog.message()
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] (ERR) Dialog shown with message: ${dialogMsg}`)
 
             const alreadyExist = failedOrders.some(fail => fail.idx === orderData.idx)
             if (!alreadyExist) {
-              if (dialogMsg.includes('USER ID')) {
+              if (dialogMsg.includes('exist')) {
                 failedOrders.push({
                   ...orderData,
                   err: 'ID does not exist'
@@ -554,7 +563,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
               } else {
                 failedOrders.push({
                   ...orderData,
-                  err: `Other error message from Smile.One popup: ${dialogMsg}`
+                  err: `Error popup shown, message: ${dialogMsg}`
                 })
               }
             }
@@ -563,9 +572,35 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             mlbbDiamondPage.close()
           })
 
+          // now they use custom popup
+          mlbbDiamondPage
+            .waitForSelector('.smileOneAlert-popUpbody')
+            .then(async e => {
+              const popupTextContent = await e?.evaluate(el => el.innerText.replace(/[ \n]*/g, ''))
+
+              console.log(`[${orderData.id} | ${index} | ${orderData.amount}] (ERR) Dialog shown with message: ${popupTextContent}`)
+
+              const alreadyExist = failedOrders.some(fail => fail.idx === orderData.idx)
+              if (!alreadyExist) {
+                if (popupTextContent.includes('exist')) {
+                  failedOrders.push({
+                    ...orderData,
+                    err: 'ID does not exist'
+                  })
+                } else {
+                  failedOrders.push({
+                    ...orderData,
+                    err: `Error popup shown, message: ${popupTextContent}`
+                  })
+                }
+              }
+
+              mlbbDiamondPage.close()
+            })
+
           try {
-            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] wait for ${waitTime / 1000} seconds...`)
-            await mlbbDiamondPage.waitForTimeout(waitTime)
+            // console.log(`[${orderData.id} | ${index} | ${orderData.amount}] wait for ${waitTime / 1000} seconds...`)
+            // await mlbbDiamondPage.waitForTimeout(waitTime)
 
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Opening page to process: ${orderData.id} - ${orderData.server} | ${orderData.amount}`)
             await mlbbDiamondPage.goto('https://www.smile.one/merchant/mobilelegends', {
@@ -578,15 +613,17 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             await mlbbDiamondPage.mouse.click(0, 0)
             await mlbbDiamondPage.mouse.click(0, 0)
 
-            await mlbbDiamondPage.waitForTimeout(200)
+            await mlbbDiamondPage.waitForTimeout(500)
 
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering ID...`)
-            await mlbbDiamondPage.type('#user_id', orderData.id.toString(), { delay: 15 })
+            await mlbbDiamondPage.type('#user_id', orderData.id.toString(), { delay: 30 })
+
+            await mlbbDiamondPage.waitForTimeout(300)
 
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering Server...`)
-            await mlbbDiamondPage.type('#zone_id', orderData.server.toString(), { delay: 15 })
+            await mlbbDiamondPage.type('#zone_id', orderData.server.toString(), { delay: 30 })
 
-            await mlbbDiamondPage.waitForTimeout(100)
+            await mlbbDiamondPage.waitForTimeout(200)
 
             await mlbbDiamondPage.mouse.click(0, 0)
 
@@ -595,14 +632,17 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             const textContent = await diamondBtn?.evaluate(el => el.innerText.replace(/[ \n]*/g, ''))
 
             if (diamondBtn && textContent && textContent.length > 0 && textContent.includes(DIAMOND_IDENTIFIER[orderData.amount].text)) {
-              await mlbbDiamondPage.waitForTimeout(100)
               console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Amount exist: ${textContent}`)
+
+              await mlbbDiamondPage.waitForSelector('body > div.smileOneAlert-popUpShadowArea', {
+                visible: true
+              })
 
               await mlbbDiamondPage.waitForSelector('body > div.smileOneAlert-popUpShadowArea', {
                 hidden: true
               })
 
-              await mlbbDiamondPage.waitForTimeout(100)
+              await mlbbDiamondPage.waitForTimeout(500)
 
               console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Select amount: ${orderData.amount}`)
 
@@ -719,7 +759,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
       } catch (e) {
         console.error(e)
 
-        console.log('Unexpected puppeteer error !!')
+        console.log('Unexpected puppeteer error. Message: ', e)
 
         browser.close()
 
