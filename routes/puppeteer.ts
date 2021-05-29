@@ -1,7 +1,7 @@
 import express from 'express'
 import { body, validateReq } from '@modules/request-validator'
 import { asyncRoute } from '@helper'
-import { getBankScreenshot, sendMLBBDiamond } from '@modules/puppeteer'
+import { getBankScreenshot, sendMLBBDiamond, getSmileOneData } from '@modules/puppeteer'
 import { admin } from '@modules/firebase'
 
 const router = express.Router()
@@ -56,6 +56,26 @@ router.post(
       return res.send({
         status: 'success',
         data: screenshotUrls
+      })
+    } catch (err) {
+      console.error(err)
+      return res.status(500).send({
+        status: 'fail',
+        message: err.message
+      })
+    }
+  })
+)
+
+router.post(
+  '/puppeteer/getSmileOneData',
+  asyncRoute(async (req, res, next) => {
+    try {
+      const { data } = await getSmileOneData()
+
+      return res.send({
+        status: 'success',
+        data
       })
     } catch (err) {
       console.error(err)

@@ -518,7 +518,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
         console.log('Opening diamond page...')
 
         mappedOrders.forEach(async (orderData, index) => {
-          const waitTime = index * 5 * 1000
+          const waitTime = index * 7 * 1000
 
           await new Promise((resolve) => {
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] wait for ${waitTime / 1000} seconds...`)
@@ -600,7 +600,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
             const userIdInput = await mlbbDiamondPage.$('#user_id')
             // this is needed to highlight all previous input to replace it
-            await userIdInput?.click({ clickCount: 4 })
+            await userIdInput?.click({ clickCount: 3 })
 
             await mlbbDiamondPage.waitForTimeout(50)
 
@@ -611,7 +611,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
             const userServerInput = await mlbbDiamondPage.$('#zone_id')
             // this is needed to highlight all previous input to replace it
-            await userServerInput?.click({ clickCount: 4 })
+            await userServerInput?.click({ clickCount: 3 })
 
             await mlbbDiamondPage.waitForTimeout(100)
 
@@ -788,5 +788,106 @@ async function getBrowser (sharedBrowser: Browser | undefined = undefined) {
 
     console.log('Created a new shared browser !!!')
     return puppeteer.launch(puppeteerConfig)
+  }
+}
+
+export async function getSmileOneData () {
+  try {
+    const allBrowserPage: Array<Page> = []
+    const browser = await getBrowser(sharedBrowser)
+    sharedBrowser = browser
+
+    const page = await browser.newPage()
+    allBrowserPage.push(page)
+
+    await page.setViewport({
+      width: browserWidth,
+      height: browserHeight
+    })
+
+    const googleAuthURL = 'https://accounts.google.com/o/oauth2/auth/identifier?response_type=code&redirect_uri=https%3A%2F%2Fwww.smile.one%2Fcustomer%2Fgoogle%2Floginv&client_id=198333726333-tpjiv3fnii5pg0tmmnogp0g8ct7fhl3b.apps.googleusercontent.com&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&access_type=offline&approval_prompt=auto&flowName=GeneralOAuthFlow'
+
+    console.log('Google auth URL: ', googleAuthURL)
+
+    await page.goto(googleAuthURL, {
+      waitUntil: 'networkidle0'
+    })
+
+    await page.waitForTimeout(200)
+
+    if (page.url().includes('https://www.smile.one/customer/google/loginv')) {
+      // login success
+      console.log('Already logged in previously...')
+    } else {
+      console.log('Entering google id...')
+
+      await page.type('#identifierId', process.env.SMILEONE_GOOGLE_ID as any, { delay: 60 })
+
+      await Promise.all([
+        page.waitForNavigation({
+          waitUntil: 'networkidle0'
+        }).catch(() => new Error('Timeout after entering google auth email')),
+        page.click('#identifierNext'),
+        page.waitForSelector('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', { visible: true })
+      ])
+
+      page.waitForTimeout(200)
+
+      console.log('Entering google password...')
+
+      await page.type('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', process.env.SMILEONE_GOOGLE_PW as any, { delay: 60 })
+
+      console.log('Waiting for google auth popup page to close')
+
+      await Promise.all([
+        page.waitForNavigation({
+          waitUntil: 'networkidle2'
+        }).catch(() => new Error('Timeout after entering google auth password')),
+        page.click('#passwordNext')
+      ])
+
+      await page.waitForTimeout(100)
+
+      if (page.url().includes('https://www.smile.one/customer/google/loginv')) {
+        // login success
+        console.log('Google login success')
+      } else {
+        // 'https://accounts.google.com/signin/v2/challenge' <--- when additional verification needed
+        console.log('Waiting for verification to be successful and be redirected')
+
+        await page.waitForNavigation({
+          waitUntil: 'networkidle0'
+        }).catch(() => new Error('Google login additional security verification failed ( timeout after 40 second )'))
+      }
+
+      console.log('Google verification and login success')
+    }
+
+    await page.goto('https://www.smile.one/merchant/mobilelegends', {
+      waitUntil: 'networkidle0'
+    })
+
+    await page.waitForTimeout(500)
+
+    const pageCookies = await page._client.send('Network.getAllCookies')
+    const cookiePHPSESSID = pageCookies.cookies.find(cookie => cookie.domain === 'www.smile.one' && cookie.name === 'PHPSESSID')
+    const csrfInputElem = await page.$('input[name="_csrf"]')
+    const csrf = await page.evaluate(x => x.value, csrfInputElem)
+
+    console.log(cookiePHPSESSID, csrf)
+
+    allBrowserPage.forEach(pageInstance => pageInstance.isClosed() ? '' : pageInstance.close())
+
+    return {
+      status: 'success',
+      phpsessid: cookiePHPSESSID?.value,
+      csrf
+    }
+  } catch (err) {
+    return {
+      status: 'fail',
+      phpsessid: null,
+      csrf: null
+    }
   }
 }
