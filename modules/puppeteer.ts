@@ -518,7 +518,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
         console.log('Opening diamond page...')
 
         mappedOrders.forEach(async (orderData, index) => {
-          const waitTime = index * 7 * 1000
+          const waitTime = index * 10 * 1000
 
           await new Promise((resolve) => {
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] wait for ${waitTime / 1000} seconds...`)
