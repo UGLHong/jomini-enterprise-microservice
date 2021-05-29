@@ -590,6 +590,25 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
               waitUntil: 'networkidle2'
             })
 
+            await mlbbDiamondPage.waitForTimeout(500)
+
+            const popupElemCancel = await mlbbDiamondPage.$('#smileone-notifi-cancel')
+            const isShown = await mlbbDiamondPage?.evaluate(() => {
+              const btn = document.querySelector('#notifi_div')
+              if (btn) {
+                const styleString = getComputedStyle(btn)
+                return styleString.display === 'block'
+              } else {
+                return false
+              }
+            })
+
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] SPA popover show up? : ${isShown}`)
+            if (isShown) {
+              console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Close SPA popover...`)
+              await popupElemCancel?.click()
+            }
+
             await mlbbDiamondPage.waitForTimeout(200)
 
             // This is to close any stupid popup modal
@@ -600,23 +619,23 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
 
             const userIdInput = await mlbbDiamondPage.$('#user_id')
             // this is needed to highlight all previous input to replace it
-            await userIdInput?.click({ clickCount: 3 })
+            await userIdInput?.click({ clickCount: 4 })
 
             await mlbbDiamondPage.waitForTimeout(50)
 
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering ID...`)
-            await userIdInput?.type(orderData.id.toString(), { delay: 30 })
+            await mlbbDiamondPage.type('#user_id', orderData.id.toString(), { delay: 30 })
 
             await mlbbDiamondPage.waitForTimeout(50)
 
             const userServerInput = await mlbbDiamondPage.$('#zone_id')
             // this is needed to highlight all previous input to replace it
-            await userServerInput?.click({ clickCount: 3 })
+            await userServerInput?.click({ clickCount: 4 })
 
             await mlbbDiamondPage.waitForTimeout(100)
 
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering Server...`)
-            await userServerInput?.type(orderData.server.toString(), { delay: 30 })
+            await mlbbDiamondPage.type('#zone_id', orderData.server.toString(), { delay: 30 })
 
             await mlbbDiamondPage.waitForTimeout(10)
 

@@ -71,12 +71,9 @@ router.post(
   '/puppeteer/getSmileOneData',
   asyncRoute(async (req, res, next) => {
     try {
-      const { data } = await getSmileOneData()
+      const result = await getSmileOneData()
 
-      return res.send({
-        status: 'success',
-        data
-      })
+      return res.send(result)
     } catch (err) {
       console.error(err)
       return res.status(500).send({
