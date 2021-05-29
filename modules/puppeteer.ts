@@ -609,7 +609,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
               await popupElemCancel?.click()
             }
 
-            await mlbbDiamondPage.waitForTimeout(200)
+            await mlbbDiamondPage.waitForTimeout(300)
 
             // This is to close any stupid popup modal
             await mlbbDiamondPage.mouse.click(0, 0)
@@ -618,6 +618,22 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             await mlbbDiamondPage.waitForTimeout(300)
 
             const userIdInput = await mlbbDiamondPage.$('#user_id')
+            const userServerInput = await mlbbDiamondPage.$('#zone_id')
+
+            // clear the original value inside, else it will somehow start to check id again and hang
+            const userIdOriVal = await userIdInput?.evaluate(x => {
+              const oriVal = x.value
+              x.value = ''
+              return oriVal
+            })
+            const userServerOriVal = await userServerInput?.evaluate(x => {
+              const oriVal = x.value
+              x.value = ''
+              return oriVal
+            })
+
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Previous ID server value... ${userIdOriVal} | ${userServerOriVal}`)
+
             // this is needed to highlight all previous input to replace it
             await userIdInput?.click({ clickCount: 4 })
 
@@ -626,9 +642,6 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering ID...`)
             await mlbbDiamondPage.type('#user_id', orderData.id.toString(), { delay: 30 })
 
-            await mlbbDiamondPage.waitForTimeout(50)
-
-            const userServerInput = await mlbbDiamondPage.$('#zone_id')
             // this is needed to highlight all previous input to replace it
             await userServerInput?.click({ clickCount: 4 })
 
@@ -637,8 +650,10 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering Server...`)
             await mlbbDiamondPage.type('#zone_id', orderData.server.toString(), { delay: 30 })
 
-            await mlbbDiamondPage.waitForTimeout(10)
+            await mlbbDiamondPage.waitForTimeout(200)
 
+            await mlbbDiamondPage.mouse.click(0, 0)
+            await mlbbDiamondPage.mouse.click(0, 0)
             await mlbbDiamondPage.mouse.click(0, 0)
 
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Verify amount exist: ${orderData.amount}`)
@@ -648,13 +663,19 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             if (diamondBtn && textContent && textContent.length > 0 && textContent.includes(DIAMOND_IDENTIFIER[orderData.amount].text)) {
               console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Amount exist: ${textContent}`)
 
-              await mlbbDiamondPage.waitForSelector('body > div.smileOneAlert-popUpShadowArea', {
-                visible: true
-              })
+              try {
+                await mlbbDiamondPage.waitForSelector('body > div.smileOneAlert-popUpShadowArea', {
+                  visible: true,
+                  timeout: 10000
+                })
 
-              await mlbbDiamondPage.waitForSelector('body > div.smileOneAlert-popUpShadowArea', {
-                hidden: true
-              })
+                await mlbbDiamondPage.waitForSelector('body > div.smileOneAlert-popUpShadowArea', {
+                  hidden: true,
+                  timeout: 20000
+                })
+              } catch (err) {
+                console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Wait for ID check on entering ID but didn't hapen or timeout...`)
+              }
 
               await mlbbDiamondPage.waitForTimeout(300)
 
