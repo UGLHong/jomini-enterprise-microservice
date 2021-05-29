@@ -596,17 +596,29 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             await mlbbDiamondPage.mouse.click(0, 0)
             await mlbbDiamondPage.mouse.click(0, 0)
 
-            await mlbbDiamondPage.waitForTimeout(500)
-
-            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering ID...`)
-            await mlbbDiamondPage.type('#user_id', orderData.id.toString(), { delay: 30 })
-
             await mlbbDiamondPage.waitForTimeout(300)
 
-            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering Server...`)
-            await mlbbDiamondPage.type('#zone_id', orderData.server.toString(), { delay: 30 })
+            const userIdInput = await mlbbDiamondPage.$('#user_id')
+            // this is needed to highlight all previous input to replace it
+            await userIdInput?.click({ clickCount: 4 })
 
-            await mlbbDiamondPage.waitForTimeout(200)
+            await mlbbDiamondPage.waitForTimeout(50)
+
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering ID...`)
+            await userIdInput?.type(orderData.id.toString(), { delay: 30 })
+
+            await mlbbDiamondPage.waitForTimeout(50)
+
+            const userServerInput = await mlbbDiamondPage.$('#zone_id')
+            // this is needed to highlight all previous input to replace it
+            await userServerInput?.click({ clickCount: 4 })
+
+            await mlbbDiamondPage.waitForTimeout(100)
+
+            console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Entering Server...`)
+            await userServerInput?.type(orderData.server.toString(), { delay: 30 })
+
+            await mlbbDiamondPage.waitForTimeout(10)
 
             await mlbbDiamondPage.mouse.click(0, 0)
 
@@ -625,7 +637,7 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
                 hidden: true
               })
 
-              await mlbbDiamondPage.waitForTimeout(500)
+              await mlbbDiamondPage.waitForTimeout(300)
 
               console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Select amount: ${orderData.amount}`)
 
