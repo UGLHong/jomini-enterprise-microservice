@@ -590,6 +590,21 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
               waitUntil: 'networkidle2'
             })
 
+            const userIdInput = await mlbbDiamondPage.$('#user_id')
+            const userServerInput = await mlbbDiamondPage.$('#zone_id')
+
+            // clear the original value inside, else it will somehow start to check id again and hang
+            const userIdOriVal = await userIdInput?.evaluate(x => {
+              const oriVal = x.value
+              x.value = ''
+              return oriVal
+            })
+            const userServerOriVal = await userServerInput?.evaluate(x => {
+              const oriVal = x.value
+              x.value = ''
+              return oriVal
+            })
+
             await mlbbDiamondPage.waitForTimeout(500)
 
             const popupElemCancel = await mlbbDiamondPage.$('#smileone-notifi-cancel')
@@ -616,21 +631,6 @@ export async function sendMLBBDiamond (allOrder: Array<any> = []): Promise<{
             await mlbbDiamondPage.mouse.click(0, 0)
 
             await mlbbDiamondPage.waitForTimeout(300)
-
-            const userIdInput = await mlbbDiamondPage.$('#user_id')
-            const userServerInput = await mlbbDiamondPage.$('#zone_id')
-
-            // clear the original value inside, else it will somehow start to check id again and hang
-            const userIdOriVal = await userIdInput?.evaluate(x => {
-              const oriVal = x.value
-              x.value = ''
-              return oriVal
-            })
-            const userServerOriVal = await userServerInput?.evaluate(x => {
-              const oriVal = x.value
-              x.value = ''
-              return oriVal
-            })
 
             console.log(`[${orderData.id} | ${index} | ${orderData.amount}] Previous ID server value... ${userIdOriVal} | ${userServerOriVal}`)
 
