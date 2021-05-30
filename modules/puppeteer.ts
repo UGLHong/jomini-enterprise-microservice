@@ -1,4 +1,4 @@
-import { Browser, Page, PageEmittedEvents } from 'puppeteer'
+import { Browser, Page } from 'puppeteer'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 const { performance } = require('perf_hooks')
@@ -17,46 +17,57 @@ export enum ErrorString {
 const DIAMOND_IDENTIFIER = {
   86: {
     idx: 1,
+    pid: 13,
     text: 'Diamond×78+8'
   },
   172: {
     idx: 2,
+    pid: 23,
     text: 'Diamond×156+16'
   },
   257: {
     idx: 3,
+    pid: 25,
     text: 'Diamond×234+23'
   },
   706: {
     idx: 4,
+    pid: 26,
     text: 'Diamond×625+81'
   },
   2195: {
     idx: 5,
+    pid: 27,
     text: 'Diamond×1860+335'
   },
   3688: {
     idx: 6,
+    pid: 28,
     text: 'Diamond×3099+589'
   },
   5532: {
     idx: 7,
+    pid: 29,
     text: 'Diamond×4649+883'
   },
   9288: {
     idx: 8,
+    pid: 30,
     text: 'Diamond×7740+1548'
   },
   starlight: {
     idx: 9,
+    pid: 32,
     text: 'Membro Estrela'
   },
   0: {
     idx: 10,
+    pid: 33,
     text: 'Passagem do crepúsculo'
   },
   starlightplus: {
     idx: 11,
+    pid: 34,
     text: 'Starlight Member Plus'
   }
 }
@@ -76,6 +87,74 @@ let sharedBrowser: Browser
 export async function initSharedBrowser () {
   try {
     sharedBrowser = await puppeteer.launch(puppeteerConfig)
+
+    // login smile.one once during intialization
+    const page = await sharedBrowser.newPage()
+
+    await page.setViewport({
+      width: browserWidth,
+      height: browserHeight
+    })
+
+    const googleAuthURL = 'https://accounts.google.com/o/oauth2/auth/identifier?response_type=code&redirect_uri=https%3A%2F%2Fwww.smile.one%2Fcustomer%2Fgoogle%2Floginv&client_id=198333726333-tpjiv3fnii5pg0tmmnogp0g8ct7fhl3b.apps.googleusercontent.com&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email&access_type=offline&approval_prompt=auto&flowName=GeneralOAuthFlow'
+
+    console.log('Google auth URL: ', googleAuthURL)
+
+    await page.goto(googleAuthURL, {
+      waitUntil: 'networkidle0'
+    })
+
+    await page.waitForTimeout(200)
+
+    if (page.url().includes('https://www.smile.one/customer/google/loginv')) {
+      // login success
+      console.log('Already logged in previously...')
+    } else {
+      console.log('Entering google id...')
+
+      await page.type('#identifierId', process.env.SMILEONE_GOOGLE_ID as any, { delay: 60 })
+
+      await Promise.all([
+        page.waitForNavigation({
+          waitUntil: 'networkidle0'
+        }).catch(() => new Error('Timeout after entering google auth email')),
+        page.click('#identifierNext'),
+        page.waitForSelector('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', { visible: true })
+      ])
+
+      page.waitForTimeout(200)
+
+      console.log('Entering google password...')
+
+      await page.type('#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input', process.env.SMILEONE_GOOGLE_PW as any, { delay: 60 })
+
+      console.log('Waiting for google auth popup page to close')
+
+      await Promise.all([
+        page.waitForNavigation({
+          waitUntil: 'networkidle2'
+        }).catch(() => new Error('Timeout after entering google auth password')),
+        page.click('#passwordNext')
+      ])
+
+      await page.waitForTimeout(100)
+
+      if (page.url().includes('https://www.smile.one/customer/google/loginv')) {
+        // login success
+        console.log('Google login success')
+      } else {
+        // 'https://accounts.google.com/signin/v2/challenge' <--- when additional verification needed
+        console.log('Waiting for verification to be successful and be redirected')
+
+        await page.waitForNavigation({
+          waitUntil: 'networkidle0'
+        }).catch(() => new Error('Google login additional security verification failed ( timeout after 40 second )'))
+      }
+
+      console.log('Google verification and login success')
+    }
+
+    await page.close()
   } catch (err) {
     console.log('Shared browser initialization failed ... !!')
   }
@@ -832,8 +911,8 @@ async function getBrowser (sharedBrowser: Browser | undefined = undefined) {
 }
 
 export async function getSmileOneData () {
+  const allBrowserPage: Array<Page> = []
   try {
-    const allBrowserPage: Array<Page> = []
     const browser = await getBrowser(sharedBrowser)
     sharedBrowser = browser
 
@@ -904,30 +983,78 @@ export async function getSmileOneData () {
     }
 
     await page.goto('https://www.smile.one/merchant/mobilelegends', {
-      waitUntil: 'networkidle0'
+      waitUntil: 'networkidle2'
     })
 
-    await page.waitForTimeout(500)
+    await page.waitForTimeout(100)
 
     const pageCookies = await page._client.send('Network.getAllCookies')
     const cookiePHPSESSID = pageCookies.cookies.find(cookie => cookie.domain === 'www.smile.one' && cookie.name === 'PHPSESSID')
     const csrfInputElem = await page.$('input[name="_csrf"]')
     const csrf = await page.evaluate(x => x.value, csrfInputElem)
 
-    console.log(cookiePHPSESSID, csrf)
+    // get https://www.smile.one/merchant/mobilelegends amount pid
+    const pageAmountBtn = await page.$$('body > div.main-container > div.mainContainer > div > div.prdctCol1 > div.box2 > div > ul > li')
+    const amountBtnData = await Promise.all(pageAmountBtn.map(li => {
+      return li.evaluate(res => ({ id: res.id, text: res.textContent }))
+    }))
+    const productIdMap = Object.keys(DIAMOND_IDENTIFIER).reduce((acc: any, amount: any) => {
+      const matchedElem = amountBtnData.find((btnData: any) => {
+        return btnData.text.includes(DIAMOND_IDENTIFIER[amount].text)
+      })
+
+      acc[amount] = matchedElem && matchedElem.id
+        ? {
+            pid: matchedElem.id
+          }
+        : { pid: '' }
+
+      return acc
+    }, {})
+
+    console.log('Cookie: ', cookiePHPSESSID?.value)
+    console.log('CSRF: ', csrf)
+    console.log('Product ID: ', productIdMap)
+
+    if (Object.values(productIdMap).some((pidData: any) => pidData.pid === '')) {
+      return {
+        status: 'fail',
+        phpsessid: cookiePHPSESSID?.value,
+        csrf,
+        productIdMap,
+        message: 'some / all pid missing, smile.one might have made changes to their website ! Please check'
+      }
+    }
+
+    if (!cookiePHPSESSID?.value) {
+      return {
+        status: 'fail',
+        phpsessid: cookiePHPSESSID?.value,
+        csrf,
+        productIdMap,
+        message: 'authentication cookie (PHPSESSID) missing, smile.one might have made changes to their website ! Please check'
+      }
+    }
 
     allBrowserPage.forEach(pageInstance => pageInstance.isClosed() ? '' : pageInstance.close())
 
     return {
       status: 'success',
       phpsessid: cookiePHPSESSID?.value,
-      csrf
+      csrf,
+      productIdMap
     }
   } catch (err) {
+    console.log('Err: ', err)
+
+    allBrowserPage.forEach(pageInstance => pageInstance.isClosed() ? '' : pageInstance.close())
+
     return {
       status: 'fail',
       phpsessid: null,
-      csrf: null
+      csrf: null,
+      productIdMap: {},
+      message: err.message
     }
   }
 }
