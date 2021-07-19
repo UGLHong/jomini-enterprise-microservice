@@ -184,7 +184,7 @@ async function screenshotDOMElement (page, opts: {path?: string, selector: strin
   })
 }
 
-export async function getBankScreenshot (): Promise<{ status: string, message?: string, data: { fileBuffers?: Array<any> }}> {
+export async function getBankScreenshot (): Promise<{ status: string, message?: string, data: { fileBuffers?: Array<any>, currentBalance: string }}> {
   return new Promise((resolve, reject) => {
     let browser: Browser
     const allBrowserPage: Array<Page> = []
@@ -403,6 +403,10 @@ export async function getBankScreenshot (): Promise<{ status: string, message?: 
 
           await frame.waitForTimeout(50)
 
+          const currentBalanceElem = await frame.waitForSelector('#mainContent > div.tableWrap > table > tbody > tr > td:nth-child(2)')
+
+          const currentBalance = await currentBalanceElem?.evaluate(el => el.innerText.replace(/[RMrm,]*/g, ''))
+
           await Promise.all([
             frame.waitForNavigation({
               waitUntil: 'networkidle0'
@@ -435,7 +439,8 @@ export async function getBankScreenshot (): Promise<{ status: string, message?: 
             status: 'success',
             message: '',
             data: {
-              fileBuffer
+              fileBuffer,
+              currentBalance
             }
           }
         } catch (err) {
@@ -462,6 +467,7 @@ export async function getBankScreenshot (): Promise<{ status: string, message?: 
         if (res.status === 'success') {
           acc.status = 'success'
           acc.data.fileBuffers.push(res.data.fileBuffer)
+          acc.data.currentBalance = res.data.currentBalance
         }
 
         acc.message = res.message
@@ -471,7 +477,8 @@ export async function getBankScreenshot (): Promise<{ status: string, message?: 
         status: 'fail',
         message: '',
         data: {
-          fileBuffers: [] as Array<any>
+          fileBuffers: [] as Array<any>,
+          currentBalance: ''
         }
       })
 

@@ -55,7 +55,10 @@ router.post(
 
       return res.send({
         status: 'success',
-        data: screenshotUrls
+        data: {
+          screenshotUrls,
+          currentBalance: data.currentBalance
+        }
       })
     } catch (err) {
       console.error(err)
