@@ -1086,6 +1086,7 @@ export async function getBackstreetGamerData () {
     console.log('Load BSG login page...')
 
     await page.goto('https://backstreetgamer.com/login', {
+      timeout: 90000,
       waitUntil: 'networkidle2'
     })
 
