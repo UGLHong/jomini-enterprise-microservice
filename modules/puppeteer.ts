@@ -1083,7 +1083,7 @@ export async function getBackstreetGamerData () {
     })
 
     await page.goto('https://backstreetgamer.com/login', {
-      waitUntil: 'networkidle0'
+      waitUntil: 'networkidle2'
     })
 
     await page.waitForTimeout(200)
