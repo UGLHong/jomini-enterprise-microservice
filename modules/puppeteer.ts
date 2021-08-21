@@ -88,6 +88,8 @@ export async function initSharedBrowser () {
   try {
     sharedBrowser = await puppeteer.launch(puppeteerConfig)
 
+    await getBackstreetGamerData()
+
     // login smile.one once during intialization
     const page = await sharedBrowser.newPage()
 
@@ -1061,6 +1063,87 @@ export async function getSmileOneData () {
       phpsessid: null,
       csrf: null,
       productIdMap: {},
+      message: err.message
+    }
+  }
+}
+
+export async function getBackstreetGamerData () {
+  const allBrowserPage: Array<Page> = []
+  try {
+    const browser = await getBrowser(sharedBrowser)
+    sharedBrowser = browser
+
+    const page = await browser.newPage()
+    allBrowserPage.push(page)
+
+    await page.setViewport({
+      width: browserWidth,
+      height: browserHeight
+    })
+
+    await page.goto('https://backstreetgamer.com/login', {
+      waitUntil: 'networkidle0'
+    })
+
+    await page.waitForTimeout(200)
+
+    if (page.url().includes('/login')) {
+      // login required
+
+      console.log('Typing BSG ID...')
+      await page.type('#sign_in_form > div:nth-child(1) > input.identity', process.env.BSG_ID as any, { delay: 30 })
+      page.waitForTimeout(100)
+      console.log('Typing BSG PW...')
+      await page.type('#sign_in_form > div:nth-child(2) > input.password', process.env.BSG_PW as any, { delay: 30 })
+
+      console.log('Logging in...')
+
+      await page.click('#sign_in_form > div:nth-child(3) > input.form-submit-sign-in')
+
+      console.log('Check login status...')
+
+      const popupTextContent = await page.waitForSelector('body > div.sweet-alert.showSweetAlert.visible', { visible: true })
+        .then(async e => {
+          return await e?.evaluate(el => el.textContent)
+        })
+
+      if (popupTextContent.toLowerCase().indexOf('success') === -1) {
+        throw new Error('Fail to login to BSG')
+      }
+
+      console.log('Login to Backstreet gamers successfully...')
+    } else {
+      console.log('Already logged in previously...')
+    }
+
+    await page.waitForTimeout(200)
+
+    const pageCookies = await page._client.send('Network.getAllCookies')
+    const cookieCISysSessions = pageCookies.cookies.find(cookie => cookie.domain === 'backstreetgamer.com' && cookie.name === 'ci_sys_sessions')
+
+    if (!cookieCISysSessions?.value) {
+      return {
+        status: 'fail',
+        ciSysSessions: cookieCISysSessions?.value,
+        message: 'authentication cookie (ci_sys_sessions) missing, BSG might have made changes to their website ! Please check'
+      }
+    }
+
+    allBrowserPage.forEach(pageInstance => pageInstance.isClosed() ? '' : pageInstance.close())
+
+    return {
+      status: 'success',
+      ciSysSessions: cookieCISysSessions?.value
+    }
+  } catch (err) {
+    console.log('Err: ', err)
+
+    allBrowserPage.forEach(pageInstance => pageInstance.isClosed() ? '' : pageInstance.close())
+
+    return {
+      status: 'fail',
+      ciSysSessions: null,
       message: err.message
     }
   }
