@@ -1071,6 +1071,7 @@ export async function getSmileOneData () {
 export async function getBackstreetGamerData () {
   const allBrowserPage: Array<Page> = []
   try {
+    console.log('Start to login BSG...')
     const browser = await getBrowser(sharedBrowser)
     sharedBrowser = browser
 
@@ -1081,6 +1082,8 @@ export async function getBackstreetGamerData () {
       width: browserWidth,
       height: browserHeight
     })
+
+    console.log('Load BSG login page...')
 
     await page.goto('https://backstreetgamer.com/login', {
       waitUntil: 'networkidle2'
