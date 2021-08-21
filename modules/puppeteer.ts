@@ -88,8 +88,6 @@ export async function initSharedBrowser () {
   try {
     sharedBrowser = await puppeteer.launch(puppeteerConfig)
 
-    await getBackstreetGamerData()
-
     // login smile.one once during intialization
     const page = await sharedBrowser.newPage()
 
@@ -157,6 +155,8 @@ export async function initSharedBrowser () {
     }
 
     await page.close()
+
+    await getBackstreetGamerData()
   } catch (err) {
     console.log('Shared browser initialization failed ... !! ', err)
   }
