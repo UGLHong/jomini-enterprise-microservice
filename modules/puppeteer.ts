@@ -1094,15 +1094,21 @@ export async function getBSGData () {
 
     console.log('Load BSG login page...')
 
-    await page.goto('https://backstreetgamer.com/login', {
+    await page.goto('https://backstreetgamer.com/history', {
       timeout: 90000,
       waitUntil: 'networkidle2'
     })
 
     await page.waitForTimeout(200)
 
-    if (page.url().includes('/login')) {
+    if (!page.url().includes('/history')) {
       // login required
+      console.log('Not logged in, try to login now...')
+
+      await page.goto('https://backstreetgamer.com/login', {
+        timeout: 90000,
+        waitUntil: 'networkidle2'
+      })
 
       console.log('Typing BSG ID...')
       await page.type('#sign_in_form > div:nth-child(1) > input.identity', process.env.BSG_ID as any, { delay: 30 })
