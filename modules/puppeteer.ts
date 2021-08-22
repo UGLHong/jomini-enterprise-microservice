@@ -156,7 +156,7 @@ export async function initSharedBrowser () {
 
     await page.close()
 
-    await getBackstreetGamerData()
+    await getBSGData()
   } catch (err) {
     console.log('Shared browser initialization failed ... !! ', err)
   }
@@ -1068,7 +1068,7 @@ export async function getSmileOneData () {
   }
 }
 
-export async function getBackstreetGamerData () {
+export async function getBSGData () {
   const allBrowserPage: Array<Page> = []
   try {
     console.log('Start to login BSG...')
@@ -1077,6 +1077,15 @@ export async function getBackstreetGamerData () {
 
     const page = await browser.newPage()
     allBrowserPage.push(page)
+
+    await page.setRequestInterception(true)
+    page.on('request', (request) => {
+      if (['api.livechatinc.com'].some(URL => request.url().indexOf(URL) !== -1)) {
+        request.abort()
+      } else {
+        request.continue()
+      }
+    })
 
     await page.setViewport({
       width: browserWidth,
