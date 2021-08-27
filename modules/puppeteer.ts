@@ -156,7 +156,7 @@ export async function initSharedBrowser () {
 
     await page.close()
 
-    await getBSGData()
+    // await getBSGData()
   } catch (err) {
     console.log('Shared browser initialization failed ... !! ', err)
   }
